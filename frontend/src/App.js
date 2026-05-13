@@ -142,9 +142,8 @@ function App() {
   const handleCheckout = async () => {
     if (!account) return alert("請先連接錢包");
     setIsCheckingOut(true);
-    const BACKEND_URL = "https://blockchain-lottery.onrender.com/api/reward";
     try {
-      const response = await axios.post(BACKEND_URL, {
+      const response = await axios.post("https://blockchain-lottery.onrender.com/api/checkout", {
         userAddress: account,
         totalPoints: totalPoints
       });
