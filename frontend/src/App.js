@@ -144,7 +144,7 @@ function App() {
     setIsCheckingOut(true);
     try {
       const BACKEND_URL = "https://blockchain-lottery.onrender.com";
-      await axios.post(`${BACKEND_URL}/api/checkout`, {
+      await axios.post(`${BACKEND_URL}'/api/reward'`, {
         userAddress: account,
         totalPoints: totalPoints
       });
