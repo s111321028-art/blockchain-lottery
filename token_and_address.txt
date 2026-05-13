@@ -1,0 +1,13 @@
+C:\Users\wills\blockchain-lottery>npx hardhat run scripts/deploy.js --network sepolia
+◇ injected env (4) from .env // tip: ⌘ custom filepath { path: '/custom/path/.env' }
+
+使用帳號部署中: 0x0d9F2b4062c9893F9aE35A1c49525DBd517E178A
+正在部署 PointToken...
+Token deployed to: 0x89027C3feBbAF757100C43F8C75Fa451c1CF9823
+
+C:\Users\wills\blockchain-lottery>npx hardhat run scripts/deployLottery.js --network sepolia
+◇ injected env (4) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+
+使用帳號部署中: 0x0d9F2b4062c9893F9aE35A1c49525DBd517E178A
+正在部署 Lottery 合約...
+Lottery 部署成功！地址: 0xbAaD63068dd0773B068D51d708c450d1dF11309a

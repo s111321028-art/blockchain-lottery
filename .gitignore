@@ -1,0 +1,27 @@
+# 1. 依賴與套件 (Dependencies)
+node_modules/
+frontend/node_modules/
+
+# 2. 敏感資料 (Environment variables) - 🌟 絕對不能上傳
+.env
+.env.*
+!.env.example
+
+# 3. 智能合約編譯產物 (Hardhat/Solidity)
+/artifacts
+/cache
+/types
+/coverage
+/.gas-snapshot
+/snapshots
+
+# 4. 前端編譯產物 (React/Build)
+/build
+/dist
+/bundle
+
+# 5. 作業系統與 IDE 暫存檔
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

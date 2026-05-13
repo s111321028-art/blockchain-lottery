@@ -1,0 +1,89 @@
+📆 第 1 週：智能合約完成（最關鍵）
+
+🎯 目標：鏈上功能全部打通
+
+Day 1：環境建置
+安裝 Node.js、Hardhat
+建立專案
+設定 MetaMask + Sepolia
+
+👉 成果：
+
+npx hardhat compile 成功
+Day 2：寫 ERC20 點數合約
+建立 PointToken.sol
+功能：
+mint
+balanceOf
+
+👉 成果：
+
+本地測試成功
+Day 3：部署 ERC20
+寫 deploy script
+部署到 Sepolia
+
+👉 成果：
+
+etherscan 可查交易
+Day 4：寫抽獎合約
+建立 Lottery.sol
+功能：
+enterLottery
+pickWinner
+Day 5：整合點數 + 抽獎
+設定門檻（例如 ≥10 點）
+呼叫 token 合約
+Day 6：寫測試 script
+模擬：
+發點數
+加入抽獎
+抽 winner
+Day 7：Debug + 穩定
+
+👉 成果標準：
+
+CLI 可以完整跑流程          completed
+
+
+📆 第 2 週：前端開發（最大卡關點）
+
+🎯 目標：讓人可以操作
+
+Day 1：建 React 專案
+安裝 ethers.js
+Day 2：連接 MetaMask
+顯示錢包地址
+Day 3：顯示點數
+呼叫 balanceOf
+Day 4：實作「領點數」
+呼叫 mint
+Day 5：實作「參加抽獎」
+呼叫 enterLottery
+Day 6：實作「抽獎」
+呼叫 pickWinner
+Day 7：Debug（這天很重要）
+
+👉 成果標準：
+
+網頁按按鈕 → 鏈上交易成功
+📆 第 3 週：整合 + Demo流程
+
+🎯 目標：可以上台演
+
+Day 1：整理操作流程
+
+👉 固定 Demo：
+
+連接錢包
+領點數
+參加抽獎
+抽 winner
+Day 2：UI 優化
+加：
+loading
+success 提示
+Day 3：錯誤處理
+防止：
+點數不足
+重複加入
