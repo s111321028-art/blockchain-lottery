@@ -12,6 +12,7 @@ console.log("測試讀取 RPC_URL:", process.env.SEPOLIA_RPC_URL);
 // --- 1. 初始化區塊鏈連線 ---
 const provider = new ethers.JsonRpcProvider(process.env.SEPOLIA_RPC_URL);
 const adminWallet = new ethers.Wallet(process.env.SEPOLIA_PRIVATE_KEY, provider);
+const LOTTERY_ADDRESS = process.env.CONTRACT_ADDRESS;
 
 const abi = [
     "function mint(address to, uint256 amount) public",
