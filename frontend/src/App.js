@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import QRCode from 'qrcode'; // 🌟 使用純 JS 版 qrcode
 import { ethers } from "ethers";
 import { getTokenContract, getLotteryContract, LOTTERY_ADDRESS } from "./utils/contract";
@@ -26,11 +26,24 @@ function App() {
   const [ownerAddress, setOwnerAddress] = useState("");
   const [players, setPlayers] = useState([]);
   const [isPickingWinner, setIsPickingWinner] = useState(false);
+  const [isMenuVisible, setIsMenuVisible] = useState(false);
+
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('mode') === 'order') {
+      setIsMenuVisible(true);
+    }
+  }, []);
 
   // 🌟 自動生成 QR Code 圖片
   useEffect(() => {
-    // 這裡會把目前的網址轉換成 Base64 圖片字串
-    QRCode.toDataURL(window.location.href, { width: 300, margin: 2 })
+    // 獲取目前不帶參數的基礎網址 (例如 https://xxx.vercel.app)
+    const baseUrl = window.location.origin + window.location.pathname;
+    // 在網址後面強制加上 ?mode=order
+    const orderUrl = `${baseUrl}?mode=order`;
+
+    QRCode.toDataURL(orderUrl, { width: 300, margin: 2 })
       .then(url => setQrImageUrl(url))
       .catch(err => console.error("QR Code 生成失敗:", err));
   }, []);
@@ -188,171 +201,155 @@ function App() {
 
   return (
     <div className="app-container">
-      <div className="app-content">
-        <header className="app-header">
-          <h1>🍔 DApp 點餐抽獎系統</h1>
-        </header>
-
-        {/* 🌟 修正後的 QR Code 區塊：直接顯示 <img> */}
-        <div className="card" style={{ textAlign: 'center' }}>
-          <h3 style={{ marginTop: 0 }}>📲 掃描進入系統</h3>
-          <div style={{ padding: '10px', background: 'white', display: 'inline-block', borderRadius: '10px' }}>
-            {qrImageUrl ? (
-              <img src={qrImageUrl} alt="QR Code" style={{ width: '150px', display: 'block' }} />
-            ) : (
-              <p>QR Code 生成中...</p>
-            )}
+      {/* 判斷目前是「入口畫面」還是「系統主畫面」 */}
+      {!isMenuVisible ? (
+        /* --- 畫面 A：掃描入口 (沒掃描前只看得到這個) --- */
+        <div className="app-content" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '80vh' }}>
+          <header className="app-header">
+            <h1>🍔 DApp 點餐抽獎系統</h1>
+          </header>
+          <div className="card" style={{ textAlign: 'center', padding: '40px 20px' }}>
+            <h3 style={{ fontSize: '1.5rem', marginTop: 0 }}>📲 掃描進入系統</h3>
+            <div style={{ padding: '20px', background: 'white', display: 'inline-block', borderRadius: '15px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
+              {qrImageUrl ? (
+                <img src={qrImageUrl} alt="QR Code" style={{ width: '200px', display: 'block' }} />
+              ) : (
+                <p>QR Code 生成中...</p>
+              )}
+            </div>
+            <p style={{ fontSize: '1rem', color: '#666', marginTop: '20px' }}>請使用手機掃描上方 QR Code 開始點餐</p>
           </div>
-          <p style={{ fontSize: '0.8rem', color: '#666', marginTop: '10px' }}>掃描即刻參與點餐抽獎</p>
         </div>
+      ) : (
+        /* --- 畫面 B：主系統頁面 (掃描後才出現) --- */
+        <div className="app-content">
+          <header className="app-header">
+            <h1>🍔 DApp 點餐抽獎系統</h1>
+          </header>
 
-        {!account ? (
-          <button className="primary-btn" onClick={connectWallet}>🦊 連接 MetaMask</button>
-        ) : (
-          <>
-            {/* 錢包與餘額卡片 */}
-            <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ textAlign: 'left' }}>
-                <p className="balance-title">我的點數</p>
-                <h2 className="balance-amount">{balance}</h2>
-              </div>
-              <div className="wallet-badge">{formatAddress(account)}</div>
+          {!account ? (
+            /* 未連接錢包時的提示 */
+            <div className="card" style={{ textAlign: 'center', padding: '30px' }}>
+              <p style={{ marginBottom: '20px', color: '#555' }}>歡迎進入系統！請先連接錢包以開始點餐。</p>
+              <button className="primary-btn" onClick={connectWallet}>🦊 連接 MetaMask</button>
             </div>
-
-            {/* 切換頁籤 */}
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-              <button className="primary-btn" style={{ background: activeTab === 'shop' ? '#2E7D32' : '#e0e0e0', color: activeTab === 'shop' ? 'white' : '#666' }} onClick={() => setActiveTab("shop")}>🛍️ 點餐</button>
-              <button className="primary-btn" style={{ background: activeTab === 'lottery' ? '#1565c0' : '#e0e0e0', color: activeTab === 'lottery' ? 'white' : '#666' }} onClick={() => setActiveTab("lottery")}>🎟️ 彩券</button>
-            </div>
-
-            {/* 點餐介面 */}
-            {activeTab === 'shop' && (
-              <div className="card">
-                <h3>📋 菜單</h3>
-                {MENU.map(item => (
-                  <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', background: '#f8f9fa', marginBottom: '8px', borderRadius: '8px' }}>
-                    <span>{item.name} (${item.price})</span>
-                    <button onClick={() => addToCart(item)} style={{ background: '#4CAF50', color: 'white', border: 'none', borderRadius: '5px', padding: '5px 10px' }}>+ 加入</button>
-                  </div>
-                ))}
-                {cart.length > 0 && (
-                  <div style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '10px' }}>
-                    <p>總額: ${totalAmount} (送 {totalPoints} 點)</p>
-                    <button className="primary-btn" onClick={handleCheckout} disabled={isCheckingOut}>💳 結帳</button>
-                  </div>
-                )}
-              </div>
-            )}
-            
-            {/* --- 🌟 結帳中回饋遮罩 --- */}
-            {isCheckingOut && (
-              <div style={{
-                position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
-                backgroundColor: "rgba(255, 255, 255, 0.8)", zIndex: 1000,
-                display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center"
-              }}>
-                {/* 這裡放一個簡單的動畫或圖示 */}
-                <div style={{ 
-                  fontSize: "4rem", animation: "spin 2s linear infinite", marginBottom: "20px" 
-                }}>
-                  ⏳
+          ) : (
+            <>
+              {/* 錢包與餘額卡片 */}
+              <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ textAlign: 'left' }}>
+                  <p className="balance-title">我的點數</p>
+                  <h2 className="balance-amount">{balance}</h2>
                 </div>
-                <h2 style={{ color: "#2E7D32" }}>🛒 正在為您結帳中...</h2>
-                <p style={{ color: "#666" }}>請稍候，正在將 Web3 點數發送到您的錢包</p>
-                
-                {/* 加入一個簡單的 CSS 動畫在 style 標籤或 App.css 裡 */}
-                <style>{`
-                  @keyframes spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
-                  }
-                `}</style>
+                <div className="wallet-badge">{formatAddress(account)}</div>
               </div>
-            )}
-            {/* 彩券介面 */}
-            {activeTab === 'lottery' && (
-              <div className="card">
-                <h3>🏆 百萬大抽獎 (10 點)</h3>
-                <input 
-                  type="text" 
-                  placeholder="📝 請輸入您的姓名 (必填)" 
-                  value={userName}
-                  onChange={(e) => setUserName(e.target.value)}
-                  style={{ width: '100%', padding: '10px', marginBottom: '15px', borderRadius: '8px', border: '1px solid #ccc', boxSizing: 'border-box' }}
-                />
-                <button className="primary-btn" onClick={() => setShowConfirmModal(true)} disabled={isBuyingTicket || parseInt(balance) < TICKET_PRICE}>{isBuyingTicket ? "🔄 處理中..." : "💰 購買彩券"}</button>
-                <p style={{ marginTop: '10px', color: '#666' }}>目前參與人次：{players.length}</p>
-                
-                {/* --- 👑 店長專屬區塊 --- */}
-                {account && ownerAddress && account.toLowerCase() === ownerAddress && (
-                  <div style={{ marginTop: '20px', padding: '15px', background: '#fff3e0', borderRadius: '10px', border: '1px solid #ffe0b2' }}>
-                    <h4 style={{ color: '#e65100', margin: '0 0 10px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                      👑 店長後台 (自動抽獎中)
-                    </h4>
-                    
-                    {/* 🌟 條件顯示區：只有人數達到 5 人，才顯示倒數計時 */}
-                    {players.length >= 5 ? (
-                      <div style={{ 
-                        background: '#fff', 
-                        padding: '10px', 
-                        borderRadius: '8px', 
-                        marginBottom: '15px', 
-                        boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)',
-                        animation: 'fadeIn 0.5s' // 增加一個淡入效果，更有科技感
-                      }}>
-                        <p style={{ margin: 0, fontSize: '0.9rem', color: '#d32f2f', fontWeight: 'bold' }}>
-                          🔥 已達抽獎門檻！開獎倒數：
-                        </p>
-                        <div style={{ 
-                          fontSize: '1.8rem', 
-                          fontWeight: 'bold', 
-                          color: countdown <= 10 ? '#ff0000' : '#e65100',
-                          fontFamily: 'monospace' 
-                        }}>
-                          00:{countdown < 10 ? `0${countdown}` : countdown}
-                        </div>
-                      </div>
-                    ) : (
-                      /* 🌟 人數未達 5 人時顯示的提示 */
-                      <div style={{ padding: '10px', background: 'rgba(255,255,255,0.5)', borderRadius: '8px', marginBottom: '15px' }}>
-                        <p style={{ margin: 0, fontSize: '0.9rem', color: '#666' }}>
-                          ⏳ 等待參與人數達 5 人... (目前: {players.length}/5)
-                        </p>
-                        <div style={{ width: '100%', background: '#eee', height: '8px', borderRadius: '4px', marginTop: '8px' }}>
-                          <div style={{ 
-                            width: `${(players.length / 5) * 100}%`, 
-                            background: '#e65100', 
-                            height: '100%', 
-                            borderRadius: '4px',
-                            transition: 'width 0.5s ease' // 讓進度條跑起來很順滑
-                          }}></div>
-                        </div>
-                      </div>
-                    )}
 
-                    <button 
-                      className="primary-btn danger-btn" 
-                      onClick={handlePickWinner}
-                      disabled={isPickingWinner || players.length === 0}
-                      style={{ 
-                        background: '#e65100',
-                        opacity: (isPickingWinner || players.length === 0) ? 0.5 : 1 
-                      }}
-                    >
-                      {isPickingWinner ? "正在開獎中..." : "🎲 立即手動開獎"}
-                    </button>
-                  </div>
-                )}
+              {/* 切換頁籤 */}
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                <button 
+                  className="primary-btn" 
+                  style={{ background: activeTab === 'shop' ? '#2E7D32' : '#e0e0e0', color: activeTab === 'shop' ? 'white' : '#666' }} 
+                  onClick={() => setActiveTab("shop")}
+                >
+                  🛍️ 點餐
+                </button>
+                <button 
+                  className="primary-btn" 
+                  style={{ background: activeTab === 'lottery' ? '#1565c0' : '#e0e0e0', color: activeTab === 'lottery' ? 'white' : '#666' }} 
+                  onClick={() => setActiveTab("lottery")}
+                >
+                  🎟️ 彩券
+                </button>
               </div>
-            )}
-          </>
-        )}
-      </div>
 
-      {/* 確認視窗 */}
+              {/* 點餐介面 (Shop Tab) */}
+              {activeTab === 'shop' && (
+                <div className="card">
+                  <h3>📋 菜單</h3>
+                  {MENU.map(item => (
+                    <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', background: '#f8f9fa', marginBottom: '8px', borderRadius: '8px' }}>
+                      <span>{item.name} (${item.price})</span>
+                      <button onClick={() => addToCart(item)} style={{ background: '#4CAF50', color: 'white', border: 'none', borderRadius: '5px', padding: '5px 10px', cursor: 'pointer' }}>+ 加入</button>
+                    </div>
+                  ))}
+                  {cart.length > 0 && (
+                    <div style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '10px' }}>
+                      <p style={{ fontWeight: 'bold' }}>總額: ${totalAmount} (送 {totalPoints} 點)</p>
+                      <button className="primary-btn" onClick={handleCheckout} disabled={isCheckingOut}>
+                        {isCheckingOut ? "🔄 處理中..." : "💳 結帳"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 彩券介面 (Lottery Tab) */}
+              {activeTab === 'lottery' && (
+                <div className="card">
+                  <h3>🏆 百萬大抽獎 (10 點)</h3>
+                  <input 
+                    type="text" 
+                    placeholder="📝 請輸入您的姓名 (必填)" 
+                    value={userName}
+                    onChange={(e) => setUserName(e.target.value)}
+                    style={{ width: '100%', padding: '10px', marginBottom: '15px', borderRadius: '8px', border: '1px solid #ccc', boxSizing: 'border-box' }}
+                  />
+                  <button className="primary-btn" onClick={() => setShowConfirmModal(true)} disabled={isBuyingTicket || parseInt(balance) < TICKET_PRICE}>
+                    {isBuyingTicket ? "🔄 處理中..." : "💰 購買彩券"}
+                  </button>
+                  <p style={{ marginTop: '10px', color: '#666' }}>目前參與人次：{players.length}</p>
+                  
+                  {/* 店長管理區塊 */}
+                  {account && ownerAddress && account.toLowerCase() === ownerAddress && (
+                    <div style={{ marginTop: '20px', padding: '15px', background: '#fff3e0', borderRadius: '10px', border: '1px solid #ffe0b2' }}>
+                      <h4 style={{ color: '#e65100', margin: '0 0 10px 0', textAlign: 'center' }}>👑 店長後台</h4>
+                      {players.length >= 5 ? (
+                        <div style={{ background: '#fff', padding: '10px', borderRadius: '8px', marginBottom: '15px', textAlign: 'center' }}>
+                          <p style={{ margin: 0, color: '#d32f2f', fontWeight: 'bold' }}>🔥 已達抽獎門檻！開獎倒數：</p>
+                          <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#e65100' }}>
+                            00:{countdown < 10 ? `0${countdown}` : countdown}
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ padding: '10px', background: 'rgba(255,255,255,0.5)', borderRadius: '8px', marginBottom: '15px' }}>
+                          <p style={{ margin: 0, fontSize: '0.9rem', color: '#666', textAlign: 'center' }}>
+                            ⏳ 等待參與人數達 5 人... (目前: {players.length}/5)
+                          </p>
+                          <div style={{ width: '100%', background: '#eee', height: '8px', borderRadius: '4px', marginTop: '8px' }}>
+                            <div style={{ width: `${(players.length / 5) * 100}%`, background: '#e65100', height: '100%', borderRadius: '4px' }}></div>
+                          </div>
+                        </div>
+                      )}
+                      <button className="primary-btn danger-btn" onClick={handlePickWinner} disabled={isPickingWinner || players.length === 0}>
+                        {isPickingWinner ? "正在開獎中..." : "🎲 立即手動開獎"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* --- 全域遮罩：結帳中 --- */}
+      {isCheckingOut && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
+          backgroundColor: "rgba(255, 255, 255, 0.9)", zIndex: 1000,
+          display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center"
+        }}>
+          <div style={{ fontSize: "4rem", animation: "spin 2s linear infinite", marginBottom: "20px" }}>⏳</div>
+          <h2 style={{ color: "#2E7D32" }}>🛒 正在為您結帳中...</h2>
+          <p style={{ color: "#666" }}>請稍候，正在發送 Web3 點數到您的錢包</p>
+          <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+        </div>
+      )}
+
+      {/* --- 全域遮罩：購買確認 --- */}
       {showConfirmModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 999, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-          <div className="card" style={{ maxWidth: '350px' }}>
+          <div className="card" style={{ maxWidth: '350px', width: '90%' }}>
             <h3>⚠️ 確認購買？</h3>
             <p>即將花費 10 點參與抽獎。</p>
             <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
