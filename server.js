@@ -17,9 +17,12 @@ const abi = [
     "function mint(address to, uint256 amount) public",
     "function balanceOf(address account) public view returns (uint256)"
 ];
-
+const lotteryAbi = [
+    "function getPlayers() public view returns (address[])",
+    "function pickWinner() public"
+];
 const contract = new ethers.Contract(process.env.CONTRACT_ADDRESS, abi, adminWallet);
-
+const lotteryContract = new ethers.Contract(process.env.LOTTERY_ADDRESS, lotteryAbi, adminWallet);
 app.post('/api/reward', async (req, res) => {
     // 現在前端傳來的是 userAddress 和掃描到的 qrData
     const { userAddress, qrData } = req.body;
@@ -104,28 +107,87 @@ app.post('/api/checkout', async (req, res) => {
     }
 });
 
-const autoLottery = async () => {
+let isCountdownStarted = false; 
+let targetDrawTime = 0; 
+let lastDrawResult = null; //紀錄最新一次的開獎結果
+let drawHistory = [];
+
+app.get('/api/lottery-status', async (req, res) => {
     try {
-        const lotteryContract = new ethers.Contract(LOTTERY_ADDRESS, LOTTERY_ABI, wallet);
-        
-        // 先檢查有沒有人在池子裡
+        let remainingSeconds = 60;
+        if (isCountdownStarted) {
+            const now = Date.now();
+            remainingSeconds = Math.max(0, Math.floor((targetDrawTime - now) / 1000));
+        }
+
         const players = await lotteryContract.getPlayers();
-        if (players.length >= 5) { // 🌟 這裡也改成 >= 5，確保前後端同步
-            console.log("🔥 門檻已到，執行自動抽獎！");
-            const tx = await lotteryContract.pickWinner();
-            await tx.wait();
-            console.log(`🎉 抽獎完成！交易 Hash: ${tx.hash}`);
+
+        res.json({
+            isCountdownStarted,
+            remainingSeconds,
+            playersCount: players.length,
+            lastDraw: lastDrawResult // 🌟 將最新開獎結果傳給前端
+        });
+    } catch (error) {
+        console.error("狀態查詢失敗:", error);
+        res.status(500).json({ error: "無法取得狀態" });
+    }
+});
+
+const autoLottery = async () => {
+    if (isCountdownStarted) return;
+
+    try {
+        const players = await lotteryContract.getPlayers();
+        
+        if (players.length > 0) { 
+            console.log(`🔥 有人加入了 (${players.length} 人)！開始倒數 1 分鐘後開獎！`);
+            isCountdownStarted = true; 
+            targetDrawTime = Date.now() + 60000; 
+
+            setTimeout(async () => {
+                try {
+                    console.log("🎰 倒數結束，正在執行自動抽獎...");
+                    const tx = await lotteryContract.pickWinner();
+                    await tx.wait();
+                    console.log(`🎉 抽獎完成！交易 Hash: ${tx.hash}`);
+                    
+                    // 🌟 紀錄這次開獎成功的時間與 Hash
+                    lastDrawResult = {
+                        hash: tx.hash,
+                        timestamp: Date.now()
+                    };
+
+                    // 🌟 新增：把最新紀錄塞進陣列的第一筆
+                    drawHistory.unshift(lastDrawResult);
+                    // 🌟 確保陣列最多只存 10 筆，避免記憶體爆滿
+                    if (drawHistory.length > 10) {
+                        drawHistory.pop();
+                    }
+
+                } catch (drawError) {
+                    console.error("❌ 開獎執行失敗:", drawError);
+                } finally {
+                    isCountdownStarted = false;
+                    targetDrawTime = 0; 
+                }
+            }, 60000);
         } else {
-            console.log("⏰ 抽獎時間到，但目前無人參與，跳過本次開獎。");
+            console.log(`⏰ 目前無人參與，等待玩家加入...`);
         }
     } catch (error) {
-        console.error("❌ 自動抽獎執行失敗:", error);
+        console.error("❌ 檢查人數失敗:", error);
     }
 };
 
-// 設定每 1 分鐘 (60000 毫秒) 執行一次
-setInterval(autoLottery, 60000);
+setInterval(autoLottery, 15000);
 const PORT = process.env.PORT || 5000;
+// 🌟 新增 API：讓前端抓取歷史紀錄
+app.get('/api/history', (req, res) => {
+    // 直接把 Node.js 記憶體裡的陣列回傳給前端
+    res.json(drawHistory);
+});
+
 app.listen(PORT, () => {
     console.log(`🚀 後端伺服器已啟動：http://localhost:${PORT}`);
 });

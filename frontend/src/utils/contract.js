@@ -10,7 +10,8 @@ export const LOTTERY_ADDRESS = "0xbAaD63068dd0773B068D51d708c450d1dF11309a";// �
 const tokenABI = [
   "function balanceOf(address account) public view returns (uint256)",
   "function mint(address to, uint256 amount) public",
-  "function approve(address spender, uint256 amount) public returns (bool)"
+  "function approve(address spender, uint256 amount) public returns (bool)",
+  "function allowance(address owner, address spender) public view returns (uint256)"
 ];
 
 // Lottery 的 ABI
@@ -30,12 +31,21 @@ const getSigner = async () => {
 
 // 給 App.js 查餘額用的
 export const getTokenContract = async () => {
-  const signer = await getSigner();
-  return new ethers.Contract(TOKEN_ADDRESS, tokenABI, signer);
+    if (!window.ethereum) throw new Error("請安裝 MetaMask");
+    
+    // 每次呼叫時，都重新取得最新的 provider 和目前 MetaMask 啟用的 signer
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner(); 
+    
+    return new ethers.Contract(TOKEN_ADDRESS, tokenABI, signer);
 };
 
 // 給未來第三週抽獎用的
 export const getLotteryContract = async () => {
-  const signer = await getSigner();
-  return new ethers.Contract(LOTTERY_ADDRESS, lotteryABI, signer);
+    if (!window.ethereum) throw new Error("請安裝 MetaMask");
+    
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
+    
+    return new ethers.Contract(LOTTERY_ADDRESS, lotteryABI, signer);
 };
