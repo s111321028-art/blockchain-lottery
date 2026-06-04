@@ -10,7 +10,7 @@ app.use(express.json());
 console.log("測試讀取 RPC_URL:", process.env.SEPOLIA_RPC_URL);
 
 // --- 1. 初始化區塊鏈連線 ---
-const provider = new ethers.JsonRpcProvider(process.env.SEPOLIA_RPC_URL);
+const provider = new ethers.WebSocketProvider(process.env.SEPOLIA_RPC_URL);
 const adminWallet = new ethers.Wallet(process.env.SEPOLIA_PRIVATE_KEY, provider);
 
 const abi = [
@@ -19,10 +19,13 @@ const abi = [
 ];
 const lotteryAbi = [
     "function getPlayers() public view returns (address[])",
-    "function pickWinner() public"
+    "function requestWinner() public",
+    "event WinnerPicked(address indexed winner, uint256 winningNumber, uint256 tokenId)"
 ];
+
 const contract = new ethers.Contract(process.env.CONTRACT_ADDRESS, abi, adminWallet);
 const lotteryContract = new ethers.Contract(process.env.LOTTERY_ADDRESS, lotteryAbi, adminWallet);
+
 app.post('/api/reward', async (req, res) => {
     // 現在前端傳來的是 userAddress 和掃描到的 qrData
     const { userAddress, qrData } = req.body;
@@ -134,6 +137,27 @@ app.get('/api/lottery-status', async (req, res) => {
     }
 });
 
+lotteryContract.on("WinnerPicked", (winner, winningNumber, tokenId, event) => {
+    console.log(`\n🎉🎉🎉 Chainlink VRF 開獎成功！ 🎉🎉🎉`);
+    console.log(`👑 贏家地址: ${winner}`);
+    console.log(`🏆 獲得專屬 NFT! 編號 (Token ID): ${tokenId.toString()}`);
+    
+    // 🌟 2. 從 event 中挖出真正的交易 Hash (Tx Hash)
+    const realTxHash = event.log.transactionHash; 
+    
+    lastDrawResult = {
+        hash: realTxHash, // 🌟 3. 把這裡換成真實的 Hash
+        winner: winner,
+        nftId: tokenId.toString(),
+        timestamp: Date.now()
+    };
+    drawHistory.unshift(lastDrawResult);
+    if (drawHistory.length > 10) drawHistory.pop();
+
+    isCountdownStarted = false;
+    targetDrawTime = 0; 
+});
+
 const autoLottery = async () => {
     if (isCountdownStarted) return;
 
@@ -141,33 +165,20 @@ const autoLottery = async () => {
         const players = await lotteryContract.getPlayers();
         
         if (players.length > 0) { 
-            console.log(`🔥 有人加入了 (${players.length} 人)！開始倒數 1 分鐘後開獎！`);
+            console.log(`🔥 有人加入了 (${players.length} 人)！開始倒數 1 分鐘後呼叫預言機！`);
             isCountdownStarted = true; 
             targetDrawTime = Date.now() + 60000; 
 
             setTimeout(async () => {
                 try {
-                    console.log("🎰 倒數結束，正在執行自動抽獎...");
-                    const tx = await lotteryContract.pickWinner();
+                    console.log("🎰 倒數結束，正在向 Chainlink 請求隨機數...");
+                    // 🌟 關鍵：這裡改成 requestWinner()
+                    const tx = await lotteryContract.requestWinner();
                     await tx.wait();
-                    console.log(`🎉 抽獎完成！交易 Hash: ${tx.hash}`);
-                    
-                    // 🌟 紀錄這次開獎成功的時間與 Hash
-                    lastDrawResult = {
-                        hash: tx.hash,
-                        timestamp: Date.now()
-                    };
-
-                    // 🌟 新增：把最新紀錄塞進陣列的第一筆
-                    drawHistory.unshift(lastDrawResult);
-                    // 🌟 確保陣列最多只存 10 筆，避免記憶體爆滿
-                    if (drawHistory.length > 10) {
-                        drawHistory.pop();
-                    }
-
+                    console.log(`✅ 請求已發送！交易 Hash: ${tx.hash}`);
+                    console.log(`⏳ 等待 Chainlink 預言機處理中 (約需 1~3 分鐘)...`);
                 } catch (drawError) {
-                    console.error("❌ 開獎執行失敗:", drawError);
-                } finally {
+                    console.error("❌ 請求開獎失敗:", drawError);
                     isCountdownStarted = false;
                     targetDrawTime = 0; 
                 }
@@ -186,6 +197,32 @@ const PORT = process.env.PORT || 5000;
 app.get('/api/history', (req, res) => {
     // 直接把 Node.js 記憶體裡的陣列回傳給前端
     res.json(drawHistory);
+});
+
+// 🌟 新增 API：取得所有餐廳名單與地圖座標
+app.get('/api/restaurants', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM restaurants');
+        res.json(result.rows);
+    } catch (error) {
+        console.error("讀取餐廳失敗:", error);
+        res.status(500).json({ error: "無法取得餐廳資料" });
+    }
+});
+
+// 🌟 更新 API：取得特定餐廳的菜單 (透過 restaurant_id 查詢)
+app.get('/api/menu/:restaurantId', async (req, res) => {
+    const { restaurantId } = req.params;
+    try {
+        const result = await pool.query(
+            'SELECT * FROM menu_items WHERE restaurant_id = $1 ORDER BY id ASC',
+            [restaurantId]
+        );
+        res.json(result.rows);
+    } catch (error) {
+        console.error("讀取菜單失敗:", error);
+        res.status(500).json({ error: "無法取得菜單資料" });
+    }
 });
 
 app.listen(PORT, () => {
