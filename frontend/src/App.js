@@ -97,6 +97,7 @@ const [myNFTs, setMyNFTs] = useState([]);
 const [isLoadingNFTs, setIsLoadingNFTs] = useState(false);
 const [showWinnerPopup, setShowWinnerPopup] = useState(false);
 const [lastDrawHash, setLastDrawHash] = useState("");
+const API_BASE_URL = "https://blockchain-lottery-1.onrender.com";
 
 // --- 🛒 購物車與頁籤狀態 ---
 // 🌟 將預設頁籤改為地圖 map
@@ -139,7 +140,7 @@ useEffect(() => {
 useEffect(() => {
   if (activeTab === 'map') {
     // 連線到我們剛剛寫好的 Python FastAPI
-    axios.get("http://localhost:8000/api/restaurants")
+    axios.get(`${API_BASE_URL}/api/restaurants`)
       .then(res => {
         if (res.data.status === 'success') {
           setRestaurants(res.data.data);
@@ -147,7 +148,7 @@ useEffect(() => {
       })
       .catch(err => console.error("無法抓取餐廳地圖資料:", err));
   } else if (activeTab === 'history') {
-    axios.get("http://localhost:5000/api/history")
+    axios.get(`${API_BASE_URL}/api/history`)
       .then(res => setHistory(res.data))
       .catch(err => console.error("無法抓取歷史紀錄:", err));
   }
@@ -254,7 +255,7 @@ useEffect(() => {
 useEffect(() => {
   const fetchLotteryStatus = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/lottery-status");
+      const response = await axios.get(`${API_BASE_URL}/api/lottery-status`);
       setCountdown(response.data.remainingSeconds);
 
       if (response.data.lastDraw && response.data.lastDraw.timestamp > lastSeenDrawRef.current) {
@@ -546,7 +547,7 @@ return (
                           <button 
                             onClick={() => {
                               setSelectedRestaurant(shop);
-                              axios.get(`http://localhost:8000/api/menu/${shop.id}`)
+                              axios.get(`${API_BASE_URL}/api/menu/${shop.id}`)
                                 .then(res => setCurrentMenu(res.data.data))
                                 .catch(err => console.error("抓菜單失敗:", err));
                               setActiveTab('shop'); 
