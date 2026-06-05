@@ -247,9 +247,9 @@ const fetchMyNFTs = async () => {
 // 🌟 當切換到「收藏」頁籤時，自動抓取資料
 useEffect(() => {
   if (activeTab === 'collection' && account) {
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     fetchMyNFTs();
   }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [activeTab, account]);
 
 useEffect(() => {
