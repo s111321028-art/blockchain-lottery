@@ -2,6 +2,8 @@ import 'dotenv/config'; // 自動載入 .env
 import express from 'express';
 import cors from 'cors';
 import { ethers } from 'ethers';
+import pg from 'pg';
+const { Pool } = pg;
 
 const app = express();
 app.use(cors());
