@@ -9,6 +9,10 @@ app.use(express.json());
 
 console.log("測試讀取 RPC_URL:", process.env.SEPOLIA_RPC_URL);
 
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false } // Supabase 連線必備安全設定
+});
 // --- 1. 初始化區塊鏈連線 ---
 const provider = new ethers.WebSocketProvider(process.env.SEPOLIA_RPC_URL);
 const adminWallet = new ethers.Wallet(process.env.SEPOLIA_PRIVATE_KEY, provider);
@@ -199,18 +203,18 @@ app.get('/api/history', (req, res) => {
     res.json(drawHistory);
 });
 
-// 🌟 新增 API：取得所有餐廳名單與地圖座標
+// 🌟 API：取得所有餐廳名單與地圖座標
 app.get('/api/restaurants', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM restaurants');
-        res.json(result.rows);
+        res.json({ status: 'success', data: result.rows });
     } catch (error) {
         console.error("讀取餐廳失敗:", error);
         res.status(500).json({ error: "無法取得餐廳資料" });
     }
 });
 
-// 🌟 更新 API：取得特定餐廳的菜單 (透過 restaurant_id 查詢)
+// 🌟 API：取得特定餐廳的菜單
 app.get('/api/menu/:restaurantId', async (req, res) => {
     const { restaurantId } = req.params;
     try {
@@ -218,7 +222,7 @@ app.get('/api/menu/:restaurantId', async (req, res) => {
             'SELECT * FROM menu_items WHERE restaurant_id = $1 ORDER BY id ASC',
             [restaurantId]
         );
-        res.json(result.rows);
+        res.json({ status: 'success', data: result.rows });
     } catch (error) {
         console.error("讀取菜單失敗:", error);
         res.status(500).json({ error: "無法取得菜單資料" });
