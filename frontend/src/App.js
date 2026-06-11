@@ -673,7 +673,7 @@ return (
                       <div style={{ background: '#fff', padding: '10px', borderRadius: '8px', textAlign: 'center' }}>
                         <p style={{ margin: 0, color: '#d32f2f', fontWeight: 'bold' }}>🔥 玩家已加入！開獎倒數：</p>
                         <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#e65100' }}>
-                          {countdown === 60 ? "01:00" : `00:${countdown < 10 ? `0${countdown}` : countdown}`}
+                          {`00:${countdown < 10 ? `0${countdown}` : countdown}`}
                         </div>
                       </div>
                     ) : (
