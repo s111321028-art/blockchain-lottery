@@ -171,9 +171,9 @@ const autoLottery = async () => {
         const players = await lotteryContract.getPlayers();
         
         if (players.length > 0) { 
-            console.log(`🔥 有人加入了 (${players.length} 人)！開始倒數 1 分鐘後呼叫預言機！`);
+            console.log(`🔥 有人加入了 (${players.length} 人)！開始倒數 `);
             isCountdownStarted = true; 
-            targetDrawTime = Date.now() + 60000; 
+            targetDrawTime = Date.now() + 10000; 
 
             setTimeout(async () => {
                 try {
